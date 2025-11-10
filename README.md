@@ -66,7 +66,7 @@ An iPhone or iPad with the Shortcuts app
 
 A Zoho CRM account with API access (or another CRM if you adapt the Worker)
 
-A Cloudflare account (free is fine) to run the Worker
+A Cloudflare account (free is fine) to run the Worker and create Secrets.
 
 ## 🛠 Setup overview
 1️⃣ 🚀 Create and secure the Cloudflare Worker
@@ -77,7 +77,7 @@ Go to your Cloudflare Dashboard → Workers & Pages → Create Application → W
 
 Create a new Worker named something like icloud-zoho-sync
 
-Paste in the contents of worker.js from this repo (the security-hardened version)
+Paste in the contents of worker.js from this repo AKA GitHub CloudFlare worker json provided as a downloadable file, copy and paste the whole thing. 
 
 Click Settings → Variables and add these Environment Variables:
 
@@ -90,7 +90,7 @@ ZOHO_API_DOMAIN	(optional) e.g. https://www.zohoapis.eu, .in, etc.
 SYNC_SHARED_SECRET	🔐 A long random string (your shared secret – used to authenticate your Shortcut to the Worker)
 
 💡 Generate SYNC_SHARED_SECRET from a password manager (something long & random).
-⚠️ Do not commit this value to GitHub or share it in screenshots.
+⚠️ Do not share this value, EVER.
 
 Click Save and Deploy.
 
