@@ -98,6 +98,24 @@ Copy the Worker URL (something like):
 https://your-worker-name.your-subdomain.workers.dev
 You’ll paste this into your Shortcut next.
 
+- If you ever think your secret might have leaked:
+1. Generate a new random string in Cloudflare.
+2. Update your Shortcut’s header value.
+3. Re-deploy the Worker.  
+All old secrets will immediately stop working.
+
+---
+
+### 📘 Learn more
+
+You can read Cloudflare’s official guide to managing secrets here:  
+👉 [**Secure environment variables in Cloudflare Workers**](https://developers.cloudflare.com/workers/configuration/environment-variables/#secrets)
+
+---
+
+This simple setup keeps your automation **functional, private, and future-proof** — no exposed tokens, no open endpoints, and total control over who can sync data to your CRM.
+
+
 ##2️⃣ 🔁 Install and connect the Shortcut
 
 Download Sync_New_Contacts.shortcut from this GitHub repo to your iPhone.
