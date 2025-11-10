@@ -30,7 +30,7 @@ Component	Purpose
 🔁 iOS Shortcut “Sync New Contacts”	Finds unsynced contacts and calls the Worker
 🪄 Requirements
 
-iPhone or iPad with Shortcuts app
+iPhone or iPad with the Shortcuts app
 
 Zoho CRM account + API credentials
 
@@ -41,8 +41,7 @@ Cloudflare account (Workers are free)
 🚀 Setup
 1️⃣ Deploy the Cloudflare Worker
 
-Go to your Cloudflare Dashboard → Workers & Pages → Create Application → Worker
-.
+Go to your Cloudflare Dashboard → Workers & Pages → Create Application → Worker.
 
 Create a new Worker named something like icloud-zoho-sync.
 
@@ -54,8 +53,8 @@ Variable	Value
 ZOHO_REFRESH_TOKEN	Your Zoho OAuth refresh token
 ZOHO_CLIENT_ID	Your Zoho OAuth client ID
 ZOHO_CLIENT_SECRET	Your Zoho OAuth client secret
-ZOHO_ACCOUNTS_DOMAIN	(optional) https://accounts.zoho.eu or .in
-ZOHO_API_DOMAIN	(optional) https://www.zohoapis.eu or .in
+ZOHO_ACCOUNTS_DOMAIN	(optional) https://accounts.zoho.eu, .in, etc.
+ZOHO_API_DOMAIN	(optional) https://www.zohoapis.eu, .in, etc.
 
 Click Save and Deploy.
 
@@ -73,23 +72,36 @@ Replace the placeholder URL:
 
 https://YOUR-WORKER-URL-HERE.example
 
-
 with your actual Worker URL from Cloudflare.
 
-Confirm that:
+Confirm that in that same action:
 
 Method = POST
 
-Request Body = JSON
+Headers include: Content-Type : application/json
 
-Key = contact
+Request Body = JSON, sending fields like:
 
-Value = the Contact dictionary variable
+firstName
+
+lastName
+
+email
+
+phone
+
+company
+
+At the top of the Shortcut, confirm the filter is roughly:
+
+Creation Date is in the last 24–48 hours
+
+Notes does not contain [ZOHO_SYNCED]
 
 Tap Done to save.
 
 💡 Security Note:
-The Shortcut file you downloaded does not include anyone else’s Worker URL or API credentials. You’ll add your own during setup.
+The Shortcut file you downloaded is “sterilized” — it does not include anyone else’s Worker URL or secrets. You’ll paste your own Worker URL during setup.
 
 3️⃣ Automate the Sync (So You Don’t Have to Tap It)
 
@@ -106,14 +118,15 @@ Tap Next → Add Action → Run Shortcut → choose “Sync New Contacts.”
 Tap Next, turn Ask Before Running → OFF, then Don’t Ask → Done.
 
 ✅ Done! Your iPhone will now sync new contacts to Zoho every day in the background.
-You’ll get a small notification like:
+You’ll see a small notification like:
 
 2 contact(s) to Zoho.
 
 🧠 Optional bonus: You can also create a second automation:
 
 When a Contact is Added → Run Shortcut → Sync New Contacts
-for near-instant syncing when you add someone new.
+
+for near-instant syncing whenever you add someone new.
 
 🔐 What You Can Change in the Worker
 
@@ -124,22 +137,35 @@ Part	Purpose	Example Change
 duplicate_check_fields: ["Email"]	Defines what counts as a duplicate	Use ["Phone"] or both
 zohoContact object	Maps fields from iPhone → Zoho	Add address, notes, etc.
 /crm/v2/Contacts/upsert	Target Zoho module	Change to /Leads/upsert
-🧭 Troubleshooting & Customization
 
-If you get an error, or want to adapt this for another CRM, just ask ChatGPT using this prompt:
+If you change your CRM or use custom fields, you’ll adjust the mapping in this part of worker.js:
+
+const zohoContact = {
+  First_Name: contact.firstName || "",
+  Last_Name: contact.lastName || "Unknown",
+  Email: contact.email || "",
+  Phone: contact.phone || "",
+  Mobile: contact.mobile || "",
+  Account_Name: contact.company || undefined,
+  Title: contact.title || undefined,
+};
+
+🧭 Troubleshooting & Customization (with ChatGPT)
+
+If you hit an error or want to adapt this for a different CRM, you can paste this prompt into ChatGPT:
 
 I'm using Cristin's iCloud → Zoho CRM Contact Sync project from GitHub.
-My goal is to sync new iPhone contacts to Zoho (or another CRM) and tag them in Notes as [ZOHO_SYNCED].
+My goal is to sync new iPhone contacts to my CRM and tag them in Notes as [ZOHO_SYNCED].
 Here’s my current Shortcut setup and Worker code:
 [paste screenshots or code]
-Help me debug or customize it.
+Please help me debug or customize it. I am not a developer.
 
-ChatGPT will walk you through setup, step-by-step — exactly like it did for Cristin.
+ChatGPT can then walk you through setup and debugging step-by-step — exactly how this project was built.
 
 💬 Project Summary (for GitHub description)
 
-Built in two days by someone with zero coding experience, this project connects iPhone Contacts to Zoho CRM using an iOS Shortcut and Cloudflare Worker. It automatically syncs new contacts, prevents duplicates with note tagging, and proves what’s possible with ChatGPT-guided no-code development.
+Built in two days by someone with zero coding experience, this project connects iPhone Contacts to Zoho CRM using an iOS Shortcut and Cloudflare Worker. It automatically syncs new contacts, prevents duplicates with note tagging, and shows what’s possible with ChatGPT-guided no-code development.
 
 🧡 Credits & Inspiration
 
-Created by Cristin Padgett — proof that anyone can build automations once you mix curiosity, persistence, and a bit of ChatGPT.
+Created by Cristin Padgett — proof that anyone can build useful automations with a bit of curiosity and a conversational AI co-pilot.
