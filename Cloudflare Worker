@@ -1,0 +1,191 @@
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    if (request.method === "GET") {
+      // Simple health check
+      return json({
+        ok: true,
+        message: "Zoho iCloud sync worker is alive",
+      });
+    }
+
+    if (request.method === "POST") {
+      const raw = await request.text();
+      let body = null;
+
+      try {
+        body = JSON.parse(raw);
+      } catch (e) {
+        // request body wasn’t valid JSON
+      }
+
+      // ---- Extract contact from whatever Shortcuts sends ----
+      let contact = null;
+
+      if (body && typeof body === "object") {
+        // Case 1: body already IS the contact object
+        if (
+          (body.firstName && body.lastName) ||
+          body.email ||
+          body.phone ||
+          body.company
+        ) {
+          contact = body;
+        }
+
+        // Case 2: body.contact = { ... }
+        if (!contact && body.contact && typeof body.contact === "object") {
+          contact = body.contact;
+        }
+
+        // Case 3: weird Shortcuts case { "<json-string>": false }
+        if (!contact) {
+          const keys = Object.keys(body);
+          if (keys.length === 1) {
+            const key = keys[0];
+            try {
+              const maybeContact = JSON.parse(key);
+              if (maybeContact && typeof maybeContact === "object") {
+                contact = maybeContact;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      if (!contact) {
+        // Could not figure out the contact from the request
+        return json(
+          {
+            ok: false,
+            message: "Could not extract contact from request body",
+          },
+          400
+        );
+      }
+
+      try {
+        const zohoResponse = await syncContactToZoho(contact, env);
+        const status = zohoResponse?.data?.[0]?.code || "UNKNOWN";
+
+        return json({
+          ok: true,
+          message: "Contact synced successfully",
+          status,
+        });
+      } catch (err) {
+        return json(
+          {
+            ok: false,
+            message: "Error processing contact sync",
+            error: err.message || String(err),
+          },
+          500
+        );
+      }
+    }
+
+    return json({ ok: false, error: "Method not allowed" }, 405);
+  },
+};
+
+// Small helper for JSON responses
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ---- Zoho helpers ----
+
+// Get a fresh Zoho OAuth access token
+async function getZohoAccessToken(env) {
+  const params = new URLSearchParams();
+  params.set("refresh_token", env.ZOHO_REFRESH_TOKEN);
+  params.set("client_id", env.ZOHO_CLIENT_ID);
+  params.set("client_secret", env.ZOHO_CLIENT_SECRET);
+  params.set("grant_type", "refresh_token");
+
+  const accountsBase = (
+    env.ZOHO_ACCOUNTS_DOMAIN || "https://accounts.zoho.com"
+  ).replace(/\/$/, "");
+
+  const res = await fetch(`${accountsBase}/oauth/v2/token`, {
+    method: "POST",
+    body: params,
+  });
+
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Failed to get Zoho access token: ${res.status} (non-JSON response)`
+    );
+  }
+
+  if (!res.ok || !data.access_token) {
+    throw new Error(
+      `Failed to get Zoho access token: ${res.status} ${JSON.stringify(data)}`
+    );
+  }
+
+  return data.access_token;
+}
+
+// Upsert a contact in Zoho CRM
+async function syncContactToZoho(contact, env) {
+  const accessToken = await getZohoAccessToken(env);
+
+  // Map our contact shape to Zoho’s fields
+  const zohoContact = {
+    First_Name: contact.firstName || "",
+    Last_Name: contact.lastName || "Unknown",
+    Email: contact.email || "",
+    Phone: contact.phone || "",
+    Mobile: contact.mobile || "",
+    Account_Name: contact.company || undefined,
+    Title: contact.title || undefined,
+  };
+
+  const payload = {
+    data: [zohoContact],
+    duplicate_check_fields: ["Email"],
+  };
+
+  const apiBase = (env.ZOHO_API_DOMAIN || "https://www.zohoapis.com").replace(
+    /\/$/,
+    ""
+  );
+  const url = `${apiBase}/crm/v2/Contacts/upsert`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Zoho-oauthtoken ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let jsonRes;
+  try {
+    jsonRes = JSON.parse(text);
+  } catch {
+    jsonRes = { raw: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      `Zoho CRM upsert failed: ${res.status} ${JSON.stringify(jsonRes)}`
+    );
+  }
+
+  return jsonRes;
+}
