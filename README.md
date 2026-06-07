@@ -14,8 +14,6 @@ This project lets you automatically sync new iPhone contacts to Zoho CRM using:
 
 ## 🧠 Step 0 – Start with ChatGPT (highly recommended)
 
-Most people using this will **not** be developers (I wasn’t either 😊).
-
 Before doing anything else, open ChatGPT and paste this:
 
 > I want to set up Cristin’s **iPhone → Zoho CRM Contact Sync** Shortcut from GitHub.  
